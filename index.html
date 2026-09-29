@@ -6,38 +6,67 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; }
-    #panel { width: 280px; background: #1e293b; color: white; padding: 15px; box-sizing: border-box; }
+    body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; overflow: hidden; }
+    
+    /* 画面下部の固定広告分の余白を下につける */
+    #main-container { display: flex; width: 100%; height: calc(100vh - 110px); }
+    
+    #panel { width: 280px; background: #1e293b; color: white; padding: 15px; box-sizing: border-box; z-index: 1000; }
     #map { flex: 1; height: 100%; cursor: crosshair; }
     .status { font-size: 18px; margin-bottom: 15px; color: #4ade80; font-weight: bold; }
     button { width: 100%; padding: 10px; margin-bottom: 8px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; }
     .btn-st { background: #3b82f6; color: white; }
     .btn-tr { background: #f97316; color: white; }
     .active { outline: 3px solid #facc15; }
-    #log { font-size: 12px; color: #94a3b8; height: 200px; overflow-y: auto; background: #0f172a; padding: 8px; border-radius: 4px; }
+    #log { font-size: 12px; color: #94a3b8; height: 180px; overflow-y: auto; background: #0f172a; padding: 8px; border-radius: 4px; }
+
+    /* 下部常駐広告の固定スタイリング */
+    .fixed-bottom-ad {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100px;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      border-top: 2px solid #334155;
+    }
   </style>
 </head>
 <body>
 
-  <div id="panel">
-    <h3>架空鉄道経営</h3>
-    <div class="status">資金: <span id="money-display">10億円</span></div>
-    
-    <button id="mode-st" class="btn-st active">1. 駅を設置 (1,000万円)</button>
-    <button id="mode-tr" class="btn-tr">2. 線路を結ぶ</button>
-    <button id="add-train" style="background:#a855f7; color:white;">3. 列車を走らせる (500万円)</button>
+  <!-- メインゲームエリア -->
+  <div id="main-container">
+    <div id="panel">
+      <h3>架空鉄道経営</h3>
+      <div class="status">資金: <span id="money-display">10億円</span></div>
+      
+      <button id="mode-st" class="btn-st active">1. 駅を設置 (1,000万円)</button>
+      <button id="mode-tr" class="btn-tr">2. 線路を結ぶ</button>
+      <button id="add-train" style="background:#a855f7; color:white;">3. 列車を走らせる (500万円)</button>
 
-    <p style="font-size:12px; color:#cbd5e1;">
-      【手順】<br>
-      ① 地図（東京駅周辺）をクリックして駅を作成<br>
-      ② 「線路を結ぶ」を押して駅→駅の順にクリック<br>
-      ③ 「列車を走らせる」を押す
-    </p>
+      <p style="font-size:12px; color:#cbd5e1;">
+        【手順】<br>
+        ① 地図（東京駅周辺）をクリックして駅を作成<br>
+        ② 「線路を結ぶ」を押して駅→駅の順にクリック<br>
+        ③ 「列車を走らせる」を押す
+      </p>
 
-    <div id="log">東京駅からスタート！<br></div>
+      <div id="log">東京駅からスタート！<br></div>
+    </div>
+
+    <div id="map"></div>
   </div>
 
-  <div id="map"></div>
+  <!-- 忍者AdMax 常駐広告エリア -->
+  <div class="fixed-bottom-ad">
+    <!-- admax -->
+    <script src="https://adm.shinobi.jp/s/5235ee24a3bda74d9a1d05e10baf3d94"></script>
+    <!-- admax -->
+  </div>
 
   <script>
     // 単位は「万円」（100,000万円 ＝ 10億円）
