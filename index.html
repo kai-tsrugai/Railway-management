@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>架空鉄道シム（東京駅スタート）</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; }
+    #panel { width: 280px; background: #1e293b; color: white; padding: 15px; box-sizing: border-box; }
+    #map { flex: 1; height: 100%; cursor: crosshair; }
+    .status { font-size: 18px; margin-bottom: 15px; color: #4ade80; font-weight: bold; }
+    button { width: 100%; padding: 10px; margin-bottom: 8px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; }
+    .btn-st { background: #3b82f6; color: white; }
+    .btn-tr { background: #f97316; color: white; }
+    .active { outline: 3px solid #facc15; }
+    #log { font-size: 12px; color: #94a3b8; height: 200px; overflow-y: auto; background: #0f172a; padding: 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <div id="panel">
+    <h3>架空鉄道経営</h3>
+    <div class="status">資金: <span id="money-display">10億円</span></div>
+    
+    <button id="mode-st" class="btn-st active">1. 駅を設置 (1,000万円)</button>
+    <button id="mode-tr" class="btn-tr">2. 線路を結ぶ</button>
+    <button id="add-train" style="background:#a855f7; color:white;">3. 列車を走らせる (500万円)</button>
+
+    <p style="font-size:12px; color:#cbd5e1;">
+      【手順】<br>
+      ① 地図（東京駅周辺）をクリックして駅を作成<br>
+      ② 「線路を結ぶ」を押して駅→駅の順にクリック<br>
+      ③ 「列車を走らせる」を押す
+    </p>
+
+    <div id="log">東京駅からスタート！<br></div>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    // 単位は「万円」（100,000万円 ＝ 10億円）
+    let money = 100000;
+    let mode = 'st';
+    let stations = [];
+    let tracks = [];
+    let selectedSt = null;
+
+    // 初期位置：東京駅
+    const map = L.map('map').setView([35.6812, 139.7671], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    const moneyDisplayEl = document.getElementById('money-display');
+    const logEl = document.getElementById('log');
+
+    // 金額の見やすいフォーマット化関数
+    function formatMoney(amount) {
+      if (amount >= 10000) {
+        const oku = Math.floor(amount / 10000);
+        const man = amount % 10000;
+        return man > 0 ? `${oku}億${man.toLocaleString()}万円` : `${oku}億円`;
+      }
+      return `${amount.toLocaleString()}万円`;
+    }
+
+    function updateMoneyDisplay() {
+      moneyDisplayEl.innerText = formatMoney(money);
+    }
+
+    function addLog(msg) {
+      logEl.innerHTML = `> ${msg}<br>` + logEl.innerHTML;
+    }
+
+    // モード切り替え
+    document.getElementById('mode-st').onclick = function() {
+      mode = 'st';
+      this.classList.add('active');
+      document.getElementById('mode-tr').classList.remove('active');
+      selectedSt = null;
+    };
+    document.getElementById('mode-tr').onclick = function() {
+      mode = 'tr';
+      this.classList.add('active');
+      document.getElementById('mode-st').classList.remove('active');
+    };
+
+    // 地図クリック（駅設置）
+    map.on('click', (e) => {
+      if (mode !== 'st') return;
+      const cost = 1000; // 1000万円
+      if (money < cost) return alert("資金不足！");
+
+      money -= cost;
+      updateMoneyDisplay();
+
+      const stId = stations.length + 1;
+      const marker = L.circleMarker(e.latlng, { radius: 9, fillColor: '#3b82f6', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map);
+      
+      const st = { id: stId, name: `第${stId}駅`, latlng: e.latlng, marker: marker };
+      stations.push(st);
+
+      // 駅をクリックした時の処理（線路作成用）
+      marker.on('click', (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        if (mode === 'tr') buildTrack(st);
+      });
+
+      addLog(`第${stId}駅 を作りました (-${formatMoney(cost)})`);
+    });
+
+    // 線路をつなぐ
+    function buildTrack(st) {
+      if (!selectedSt) {
+        selectedSt = st;
+        st.marker.setStyle({ fillColor: '#facc15' });
+        addLog(`${st.name} を起点に選択`);
+      } else {
+        if (selectedSt.id === st.id) return;
+        
+        const dist = Math.round(selectedSt.latlng.distanceTo(st.latlng) / 1000);
+        const cost = Math.max(100, dist * 100); // 最低100万円
+
+        if (money < cost) {
+          alert("資金不足！");
+          selectedSt.marker.setStyle({ fillColor: '#3b82f6' });
+          selectedSt = null;
+          return;
+        }
+
+        money -= cost;
+        updateMoneyDisplay();
+
+        const line = L.polyline([selectedSt.latlng, st.latlng], { color: '#334155', weight: 6 }).addTo(map);
+        tracks.push({ start: selectedSt, end: st, line: line, dist: dist });
+
+        addLog(`${selectedSt.name} ～ ${st.name} 間に線路開通 (-${formatMoney(cost)})`);
+        selectedSt.marker.setStyle({ fillColor: '#3b82f6' });
+        selectedSt = null;
+      }
+    }
+
+    // 列車を走らせる
+    document.getElementById('add-train').onclick = () => {
+      if (tracks.length === 0) return alert("先に線路をつないでください！");
+      const cost = 500; // 500万円
+      if (money < cost) return alert("資金不足！");
+
+      money -= cost;
+      updateMoneyDisplay();
+
+      const trk = tracks[tracks.length - 1]; // 一番新しい線路に走らせる
+      const train = L.circleMarker(trk.start.latlng, { radius: 6, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 1 }).addTo(map);
+
+      let step = 0;
+      let dir = 1;
+
+      setInterval(() => {
+        step += 0.02 * dir;
+        if (step >= 1 || step <= 0) {
+          dir *= -1;
+          step = Math.max(0, Math.min(1, step));
+          const fare = (trk.dist + 1) * 200; // 運賃収入
+          money += fare;
+          updateMoneyDisplay();
+          addLog(`列車が到着。運賃収入 +${formatMoney(fare)}`);
+        }
+
+        const lat = trk.start.latlng.lat + (trk.end.latlng.lat - trk.start.latlng.lat) * step;
+        const lng = trk.start.latlng.lng + (trk.end.latlng.lng - trk.start.latlng.lng) * step;
+        train.setLatLng([lat, lng]);
+      }, 100);
+
+      addLog("列車を購入して運行を開始しました！");
+    };
+
+    // 初期表示設定
+    updateMoneyDisplay();
+  </script>
+</body>
+</html>
